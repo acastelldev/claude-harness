@@ -1,0 +1,12 @@
+{
+  "name": "claude-harness-dev",
+  "private": true,
+  "description": "Tests of the harness plugin for Claude Code (the plugin itself has no dependencies).",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

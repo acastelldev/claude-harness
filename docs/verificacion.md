@@ -12,7 +12,9 @@ de ser cierto, se corrige aquí primero. Versión probada: Claude Code 2.1.327, 
 | 5 | En Windows una orden en texto usa Git Bash si existe y si no PowerShell; la forma exec no pasa por ninguna shell | verificado | https://code.claude.com/docs/en/hooks.md |
 | 6 | `timeout` de un hook va en segundos (600 por defecto) | verificado | https://code.claude.com/docs/en/hooks.md |
 | 7 | PreToolUse deniega con `hookSpecificOutput.permissionDecision: "deny"` y `permissionDecisionReason` | verificado | https://code.claude.com/docs/en/hooks.md |
-| 8 | El deny de un hook se cumple también en modo `bypassPermissions` | pendiente de prueba real (Tarea 8) | — |
+| 8 | El deny de un hook se cumple también en modo `bypassPermissions` | probado en real (24/11/2026, Windows, 2.1.327): `Write` de `.env.staging` denegado por el hook con `--permission-mode bypassPermissions` | prueba propia (la documentación no lo dice explícitamente) |
+| 8b | Los `permissions.allow` de `.claude/settings.json` del proyecto no se aplican hasta aceptar la confianza de la carpeta | probado en real (aviso «this workspace has not been trusted») | https://code.claude.com/docs/en/settings.md |
+| 8c | Una regla `Read(...)` en deny también impide escribir ese archivo | probado en real (Write de `.env.local` → «covered by a Read deny rule») | prueba propia |
 | 9 | Stop recibe `stop_hook_active` y bloquea con `{"decision":"block","reason":...}`; tope de 8 continuaciones seguidas (se reinicia con cada herramienta; `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) | verificado | https://code.claude.com/docs/en/hooks.md |
 | 10 | SessionStart añade contexto con `hookSpecificOutput.additionalContext` (máx. 10.000 caracteres); matchers `startup`, `resume`, `clear`, `compact`, `fork` | verificado | https://code.claude.com/docs/en/hooks.md |
 | 11 | PostToolUse no bloquea por defecto | verificado | https://code.claude.com/docs/en/hooks.md |
