@@ -9,9 +9,9 @@ export const PLUGIN = join(ROOT, 'plugins', 'harness');
 export const script = (name) => join(PLUGIN, 'scripts', name);
 
 // Runs a hook the way Claude Code does: a node process with the event JSON on stdin.
-export function runHook(file, input, { cwd, env = {}, timeoutMs = 30000 } = {}) {
+export function runHook(file, input, { cwd, env = {}, timeoutMs = 30000, args = [] } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [file], {
+    const child = spawn(process.execPath, [file, ...args], {
       cwd: cwd ?? process.cwd(),
       env: { ...process.env, ...env },
       stdio: ['pipe', 'pipe', 'pipe'],
