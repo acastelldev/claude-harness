@@ -1,0 +1,17 @@
+{
+  "name": "acastell",
+  "owner": {
+    "name": "acastell.dev",
+    "url": "https://acastell.dev"
+  },
+  "metadata": {
+    "description": "Plugins de Claude Code de acastell.dev"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Un harness para Claude Code: protege archivos sensibles, verifica antes de terminar y prepara cada proyecto con /harness:init."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Un harness para Claude Code: protege archivos sensibles, verifica antes de terminar y prepara cada proyecto con /harness:init.",
+  "author": {
+    "name": "acastell.dev",
+    "url": "https://acastell.dev"
+  },
+  "homepage": "https://github.com/acastelldev/claude-harness",
+  "repository": "https://github.com/acastelldev/claude-harness",
+  "license": "MIT",
+  "keywords": ["harness", "hooks", "verification", "safety"]
+}
