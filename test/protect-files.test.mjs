@@ -44,12 +44,14 @@ test('defaults apply even without harness.json (plugin installed, init not run)'
   assert.equal(r.json.hookSpecificOutput.permissionDecision, 'deny');
 });
 
-test('broken harness.json blocks nothing and warns on stderr', async () => {
+test('broken harness.json keeps the default protection and warns on stderr', async () => {
   const dir = tempProject({ '.claude/harness.json': '{ nope' });
   const r = await runHook(HOOK, ev('Edit', { file_path: join(dir, '.env') }), { env: env(dir) });
   assert.equal(r.code, 0);
-  assert.equal(r.json, null);
+  assert.equal(r.json.hookSpecificOutput.permissionDecision, 'deny');
   assert.match(r.stderr, /harness\.json/);
+  const ok = await runHook(HOOK, ev('Edit', { file_path: join(dir, 'src', 'a.js') }), { env: env(dir) });
+  assert.equal(ok.json, null);
 });
 
 test('empty or non-JSON stdin never breaks the work', async () => {

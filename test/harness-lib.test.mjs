@@ -45,9 +45,9 @@ test('protectedBy: path pattern relative to the project', () => {
   assert.equal(protectedBy('C:\\demo\\app\\config\\dev\\db.json', P, pats), null);
 });
 
-test('protectedBy: case-insensitive only on Windows', () => {
-  const r = protectedBy('C:\\demo\\app\\.ENV', P, DEFAULT_PROTECT);
-  assert.equal(r, isWin ? '.env' : null);
+test('protectedBy: case-insensitive where the file system is (Windows and macOS)', () => {
+  const r = protectedBy('/srv/app/.ENV', '/srv/app', DEFAULT_PROTECT);
+  assert.equal(r, isWin || process.platform === 'darwin' ? '.env' : null);
 });
 
 test('loadConfig: no file -> null config, no error', () => {
@@ -94,6 +94,16 @@ test('runVerify: hanging command times out quickly', async () => {
   assert.equal(r.timedOut, true);
   assert.equal(r.ok, false);
   assert.ok(Date.now() - t0 < 5000, 'took too long');
+});
+
+test('runVerify: a background grandchild holding the pipes does not cause a false timeout', async () => {
+  const code = "require('child_process').spawn(process.execPath,['-e','setTimeout(()=>{},8000)'],{stdio:'inherit',detached:true}).unref();console.log('tests ok')";
+  const t0 = Date.now();
+  const r = await runVerify(nodeCmd(code), process.cwd(), 6);
+  assert.equal(r.timedOut, false);
+  assert.equal(r.ok, true);
+  assert.match(r.tail, /tests ok/);
+  assert.ok(Date.now() - t0 < 4000, `took ${Date.now() - t0} ms`);
 });
 
 test('runVerify: non-UTF-8 output does not throw', async () => {

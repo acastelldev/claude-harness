@@ -5,10 +5,12 @@
 Un **harness** es todo lo que rodea al modelo para que trabaje bien en tu proyecto: el contexto que lee y los controles
 que no puede saltarse. Este plugin trae los controles comunes a todos tus proyectos y prepara cada uno con un comando:
 
-- **Protege archivos sensibles.** Claude no puede editar `.env`, claves (`*.pem`, `*.key`, `id_rsa*`), lockfiles ni
-  `.git`, ni siquiera en modo `bypassPermissions`. Tú decides qué más proteger.
-- **No deja terminar con el proyecto roto.** Antes de que Claude diga «listo», ejecuta tu verificación (tests, build,
-  lint). Si falla, le devuelve el error y Claude sigue hasta arreglarlo. Sin bucles infinitos.
+- **Protege archivos sensibles.** Las herramientas de edición de Claude (Edit, Write, NotebookEdit) no pueden tocar
+  `.env`, claves (`*.pem`, `*.key`, `id_rsa*`), lockfiles ni `.git`, ni siquiera en modo `bypassPermissions`. Tú
+  decides qué más proteger. Ver [Límites](#límites).
+- **No deja terminar con el proyecto roto.** Si Claude ha editado archivos en la sesión, antes de que diga «listo»
+  se ejecuta tu verificación (tests, build, lint). Si falla, le devuelve el error y Claude tiene otro turno para
+  arreglarlo. Sin bucles infinitos.
 - **`/harness:init`** detecta el lenguaje y escribe en tu proyecto un `CLAUDE.md` corto, los permisos y el comando de
   verificación.
 - **`/harness:check`** ejecuta la verificación cuando quieras y explica qué falla.
@@ -65,8 +67,10 @@ común (y se actualiza en todos tus proyectos a la vez) y `/harness:init` escrib
 }
 ```
 
-- `verify`: el comando que dice si el proyecto está bien. Se ejecuta antes de terminar si hay cambios sin commitear (o
-  siempre, fuera de git). Máximo 600 s.
+- `verify`: el comando que dice si el proyecto está bien. Se ejecuta antes de terminar cuando Claude ha editado algún
+  archivo en la sesión (aunque luego haya hecho commit); si solo ha contestado una pregunta, no. Máximo 600 s.
+- `formatFiles`: a qué archivos se aplica `format` (por ejemplo `["*.py"]`); sin él, a todos. `init` lo rellena
+  solo para `ruff`.
 - `protect`: se suman a los protegidos por defecto. Sin `/` comparan el nombre del archivo; con `/`, la ruta dentro del
   proyecto. `!` delante = excepción (por ejemplo, para dejar editar un lockfile).
 - `format`: formateador por archivo; `{file}` es el archivo editado.
@@ -107,8 +111,20 @@ instalado no recibe nada.
   harness te lo recuerda.
 - **«Me pregunta permiso para los tests»:** aún no has aceptado la confianza de la carpeta.
 - **«Claude no termina nunca»:** no pasa. Tras un bloqueo, el hook deja parar la siguiente vez (`stop_hook_active`) y
-  Claude Code corta tras 8 continuaciones seguidas.
+  Claude Code corta tras 8 continuaciones seguidas. Si al segundo intento sigue fallando, Claude para; la próxima vez
+  que termine se vuelve a comprobar.
 - **«Node no se encuentra»:** instala Node.js 20 o posterior y abre otra terminal.
+- **«El harness.json está mal»:** al abrir la sesión verás el motivo. Mientras tanto, la protección por defecto sigue
+  activa y la verificación no se ejecuta.
+
+## Límites
+
+- La protección actúa sobre las herramientas de edición. Un comando de terminal (`echo ... >> .env`) no pasa por ese
+  hook: para eso están los permisos (`init` prohíbe leer `.env` y claves, y una regla de lectura prohibida también
+  impide escribir ese archivo con las herramientas de Claude) y tu revisión.
+- La verificación solo se dispara por archivos editados con esas herramientas en la sesión.
+- Verde no es lo mismo que correcto: si los tests se cambian para que pasen, el hook no lo ve. Para eso está el
+  subagente `revisor`.
 
 ## Desarrollo
 

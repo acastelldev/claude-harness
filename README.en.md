@@ -5,10 +5,12 @@
 A **harness** is everything around the model that makes it work well in your project: the context it reads and the
 controls it cannot skip. This plugin brings the controls every project needs and sets each project up with one command:
 
-- **Protects sensitive files.** Claude cannot edit `.env`, keys (`*.pem`, `*.key`, `id_rsa*`), lockfiles or `.git`,
-  not even in `bypassPermissions` mode. You choose what else to protect.
-- **Does not let it finish with a broken project.** Before Claude says "done", it runs your check (tests, build, lint).
-  If it fails, Claude gets the error back and keeps going until it is fixed. No endless loops.
+- **Protects sensitive files.** Claude's edit tools (Edit, Write, NotebookEdit) cannot touch `.env`, keys (`*.pem`,
+  `*.key`, `id_rsa*`), lockfiles or `.git`, not even in `bypassPermissions` mode. You choose what else to protect.
+  See [Limits](#limits).
+- **Does not let it finish with a broken project.** If Claude edited files in the session, your check (tests, build,
+  lint) runs before it says "done". If it fails, Claude gets the error back and one more turn to fix it. No endless
+  loops.
 - **`/harness:init`** detects the language and writes a short `CLAUDE.md`, the permissions and the check command into
   your project.
 - **`/harness:check`** runs the check whenever you want and explains what fails.
@@ -65,8 +67,10 @@ what is common (and updates in all your projects at once) and `/harness:init` wr
 }
 ```
 
-- `verify`: the command that says whether the project is fine. It runs before finishing when there are uncommitted
-  changes (or always, outside git). 600 s at most.
+- `verify`: the command that says whether the project is fine. It runs before finishing when Claude edited a file in
+  the session (even if it committed afterwards); not when it only answered a question. 600 s at most.
+- `formatFiles`: which files `format` applies to (for example `["*.py"]`); without it, all of them. `init` sets it
+  only for `ruff`.
 - `protect`: added to the default list. Without `/` they match the file name; with `/`, the path inside the project.
   A leading `!` is an exception (for example, to allow editing a lockfile).
 - `format`: per-file formatter; `{file}` is the edited file.
@@ -107,8 +111,20 @@ already installed it get nothing.
   start of each session.
 - **"It asks permission to run the tests":** you have not accepted the folder trust dialog yet.
 - **"Claude never finishes":** it does not happen. After one block the hook lets it stop the next time
-  (`stop_hook_active`), and Claude Code cuts off after 8 continuations in a row.
+  (`stop_hook_active`), and Claude Code cuts off after 8 continuations in a row. If the second attempt still fails,
+  Claude stops; the check runs again the next time it finishes.
 - **"node not found":** install Node.js 20 or later and open a new terminal.
+- **"harness.json is wrong":** the session start tells you why. Meanwhile the default protection stays on and the
+  check does not run.
+
+## Limits
+
+- Protection works on the edit tools. A terminal command (`echo ... >> .env`) does not go through that hook: that is
+  what permissions are for (`init` forbids reading `.env` and keys, and a forbidden read rule also stops Claude's tools
+  from writing that file) and your own review.
+- The check is only triggered by files edited with those tools in the session.
+- Green is not the same as correct: if the tests are changed so they pass, the hook cannot tell. That is what the
+  `revisor` subagent is for.
 
 ## Development
 

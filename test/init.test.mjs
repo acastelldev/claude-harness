@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, linkSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runHook, PLUGIN, tempProject } from './helpers.mjs';
 
@@ -48,6 +49,22 @@ test('detect: python without pytest uses the standard library unittest', async (
   assert.equal((await detect(dir)).verify, 'python -m unittest');
   const uv = tempProject({ 'pyproject.toml': '[project]\nname = "notas"\n', 'uv.lock': '' });
   assert.equal((await detect(uv)).verify, 'uv run python -m unittest');
+});
+
+test('detect: only python3 on PATH -> proposes python3', async () => {
+  const bin = mkdtempSync(join(tmpdir(), 'harness-bin-'));
+  const fake = join(bin, process.platform === 'win32' ? 'python3.exe' : 'python3');
+  if (process.platform === 'win32') linkSync(process.execPath, fake); else symlinkSync(process.execPath, fake);
+  const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
+  const dir = tempProject({ 'pyproject.toml': '[project]\nname = "notas"\n' });
+  const r = await runHook(INIT, '', { cwd: dir, args: ['detect'], env: { [pathKey]: bin } });
+  assert.equal(JSON.parse(r.stdout).verify, 'python3 -m unittest');
+});
+
+test('write: a ruff formatter only applies to Python files', async () => {
+  const dir = tempProject({});
+  await run(dir, 'write', '--verify', 'python -m pytest', '--format', 'ruff format {file}');
+  assert.deepEqual(readJson(dir, '.claude/harness.json').formatFiles, ['*.py', '*.pyi']);
 });
 
 test('detect: rust and go', async () => {

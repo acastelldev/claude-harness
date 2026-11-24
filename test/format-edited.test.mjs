@@ -31,6 +31,14 @@ test('failing formatter never fails the hook', async () => {
   assert.equal(r.code, 0);
 });
 
+test('formatFiles limits the formatter to matching files', async () => {
+  const dir = tempProject({ '.claude/harness.json': { format: RECORD, formatFiles: ['*.py', '*.pyi'] } });
+  await runHook(HOOK, ev(join(dir, 'datos.json')), { env: env(dir) });
+  assert.equal(existsSync(join(dir, 'witness.txt')), false);
+  await runHook(HOOK, ev(join(dir, 'notas', 'media.py')), { env: env(dir) });
+  assert.equal(readFileSync(join(dir, 'witness.txt'), 'utf8'), join(dir, 'notas', 'media.py'));
+});
+
 test('protected file is never handed to the formatter', async () => {
   const dir = tempProject({ '.claude/harness.json': { format: RECORD } });
   await runHook(HOOK, ev(join(dir, '.env')), { env: env(dir) });

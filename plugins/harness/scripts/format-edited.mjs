@@ -9,7 +9,8 @@ try {
   const file = input?.tool_input?.file_path;
   const dir = projectDir();
   const { config } = loadConfig(dir);
-  if (typeof file === 'string' && file && config?.format && !protectedBy(file, dir, config.protect)) {
+  const applies = config?.formatFiles ? protectedBy(file, dir, config.formatFiles) !== null : true;
+  if (typeof file === 'string' && file && config?.format && applies && !protectedBy(file, dir, config.protect)) {
     const cmd = config.format.includes('{file}') ? config.format.replaceAll('{file}', quote(file)) : `${config.format} ${quote(file)}`;
     await runVerify(cmd, dir, 60);
   }

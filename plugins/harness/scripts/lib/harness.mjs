@@ -1,5 +1,6 @@
 // Shared code for the harness hooks. Node >= 20, no dependencies.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, win32, posix } from 'node:path';
 import { spawn } from 'node:child_process';
 
@@ -39,6 +40,29 @@ export function msg(lang, key, vars = {}) {
   return (table[key] ?? MESSAGES.es[key]).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 }
 
+// Per-session "Claude edited something" marks, so the Stop hook only checks work Claude did.
+export function stateDir() {
+  return process.env.CLAUDE_PLUGIN_DATA || join(tmpdir(), 'claude-harness');
+}
+
+function markPath(sessionId) {
+  const safe = String(sessionId || 'default').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 100);
+  return join(stateDir(), `changed-${safe}`);
+}
+
+export function markChanged(sessionId) {
+  mkdirSync(stateDir(), { recursive: true });
+  writeFileSync(markPath(sessionId), new Date().toISOString());
+}
+
+export function hasChanged(sessionId) {
+  return existsSync(markPath(sessionId));
+}
+
+export function clearChanged(sessionId) {
+  rmSync(markPath(sessionId), { force: true });
+}
+
 export function projectDir() {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
@@ -68,6 +92,7 @@ export function loadConfig(dir) {
       verify: str(raw.verify),
       protect: [...DEFAULT_PROTECT, ...extra],
       format: str(raw.format),
+      formatFiles: Array.isArray(raw.formatFiles) ? raw.formatFiles.filter((p) => typeof p === 'string' && p) : null,
       lang: raw.lang === 'en' ? 'en' : 'es',
       verifyTimeout: Number.isFinite(timeout) && timeout > 0 ? timeout : 300,
     },
@@ -111,7 +136,8 @@ export function protectedBy(filePath, dir, patterns) {
   const inside = rel && !rel.startsWith('..') && !P.isAbsolute(rel);
   rel = rel.split(P.sep).join('/');
   const name = abs.split(/[\\/]/).pop();
-  const ci = process.platform === 'win32';
+  // Windows and macOS (APFS by default) open .ENV as .env, so match without case there.
+  const ci = process.platform === 'win32' || process.platform === 'darwin';
   const flags = ci ? 'i' : '';
   let hit = null;
   for (const raw of patterns) {
@@ -160,11 +186,18 @@ export function runVerify(cmd, cwd, timeoutS) {
       if (done) return;
       done = true;
       clearTimeout(timer);
+      // A background process started by the check (a server, a watcher) may still hold the pipes:
+      // drop them so neither this promise nor the hook process waits for it.
+      child.stdout.destroy();
+      child.stderr.destroy();
       const text = decode(Buffer.concat(chunks)).replace(/\r\n/g, '\n');
       resolvePromise({ ok: !timedOut && code === 0, code: timedOut ? null : code, timedOut, tail: text.slice(-TAIL) });
     };
     child.on('error', () => finish(127));
     child.on('close', (code) => finish(code));
+    // 'close' waits for every holder of the pipes; 'exit' is the command itself. Give the pipes a
+    // moment to flush the last lines, then decide on the exit code.
+    child.on('exit', (code) => setTimeout(() => finish(code), 250));
   });
 }
 

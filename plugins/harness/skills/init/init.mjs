@@ -4,6 +4,7 @@
 // write creates/merges .claude/harness.json and .claude/settings.json without losing anything.
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const dir = process.cwd();
 const has = (f) => existsSync(join(dir, f));
@@ -15,6 +16,21 @@ export const DENY_READ = [
 ];
 const MARKETPLACE = { acastell: { source: { source: 'github', repo: 'acastelldev/claude-harness' } } };
 const PLUGIN_ID = 'harness@acastell';
+
+// Many macOS and Linux machines only have python3; Windows usually has python.
+function pythonCommand() {
+  for (const cmd of ['python', 'python3']) {
+    const r = spawnSync(cmd, ['--version'], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+    if (r.status === 0) return cmd;
+  }
+  return process.platform === 'win32' ? 'python' : 'python3';
+}
+
+// File patterns a known formatter must be limited to (it would mangle other files).
+function formatFilesFor(format) {
+  if (/^\s*(uv run\s+)?ruff\b/.test(format ?? '')) return ['*.py', '*.pyi'];
+  return null;
+}
 
 function detect() {
   const evidence = [];
@@ -44,9 +60,10 @@ function detect() {
     const py = has('pyproject.toml') ? read('pyproject.toml') : '';
     const pytest = /pytest/.test(py + reqs.map(read).join('\n'));
     const tool = pytest ? 'pytest' : 'python -m unittest';
+    const python = pythonCommand();
     return {
       stack: 'python',
-      verify: uv ? `uv run ${tool}` : (pytest ? 'python -m pytest' : tool),
+      verify: uv ? `uv run ${tool}` : `${python} -m ${pytest ? 'pytest' : 'unittest'}`,
       format: /ruff/.test(py) ? 'ruff format {file}' : null,
       evidence,
     };
@@ -96,6 +113,7 @@ function write(args) {
     verify: args.verify,
     protect: Array.isArray(harness.protect) ? harness.protect : [],
     format: args.format ?? harness.format ?? null,
+    formatFiles: args.format ? formatFilesFor(args.format) : (harness.formatFiles ?? formatFilesFor(harness.format)),
     lang: args.lang ?? harness.lang ?? 'es',
     verifyTimeout: harness.verifyTimeout ?? 300,
   };

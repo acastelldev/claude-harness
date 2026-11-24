@@ -9,19 +9,17 @@ const file = toolInput.file_path ?? toolInput.notebook_path;
 if (typeof file === 'string' && file) {
   const dir = projectDir();
   const { config, error } = loadConfig(dir);
-  if (error) {
-    process.stderr.write(`${msg('es', 'badConfig', { error })}\n`);
-  } else {
-    const patterns = config ? config.protect : DEFAULT_PROTECT;
-    const pattern = protectedBy(file, dir, patterns);
-    if (pattern) {
-      emit({
-        hookSpecificOutput: {
-          hookEventName: 'PreToolUse',
-          permissionDecision: 'deny',
-          permissionDecisionReason: msg(config?.lang ?? 'es', 'blocked', { file, pattern }),
-        },
-      });
-    }
+  // A broken harness.json must not switch the default protection off: keep it and warn.
+  if (error) process.stderr.write(`${msg('es', 'badConfig', { error })}\n`);
+  const patterns = config ? config.protect : DEFAULT_PROTECT;
+  const pattern = protectedBy(file, dir, patterns);
+  if (pattern) {
+    emit({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: msg(config?.lang ?? 'es', 'blocked', { file, pattern }),
+      },
+    });
   }
 }
