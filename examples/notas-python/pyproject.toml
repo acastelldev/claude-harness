@@ -1,0 +1,5 @@
+[project]
+name = "notas"
+version = "1.0.0"
+description = "Proyecto de ejemplo inventado para probar el harness: notas de una clase."
+requires-python = ">=3.10"

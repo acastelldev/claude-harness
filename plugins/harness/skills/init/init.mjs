@@ -42,9 +42,11 @@ function detect() {
     const uv = has('uv.lock');
     if (uv) evidence.push('uv.lock');
     const py = has('pyproject.toml') ? read('pyproject.toml') : '';
+    const pytest = /pytest/.test(py + reqs.map(read).join('\n'));
+    const tool = pytest ? 'pytest' : 'python -m unittest';
     return {
       stack: 'python',
-      verify: uv ? 'uv run pytest' : 'python -m pytest',
+      verify: uv ? `uv run ${tool}` : (pytest ? 'python -m pytest' : tool),
       format: /ruff/.test(py) ? 'ruff format {file}' : null,
       evidence,
     };

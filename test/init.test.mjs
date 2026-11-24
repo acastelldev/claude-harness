@@ -35,10 +35,19 @@ test('detect: npm default "no test specified" script counts as no check', async 
 test('detect: python with pyproject, uv and ruff', async () => {
   const plain = tempProject({ 'requirements.txt': 'pytest\n' });
   assert.deepEqual([(await detect(plain)).stack, (await detect(plain)).verify], ['python', 'python -m pytest']);
-  const uv = tempProject({ 'pyproject.toml': '[tool.ruff]\nline-length = 100\n', 'uv.lock': '' });
+  const uv = tempProject({
+    'pyproject.toml': '[dependency-groups]\ndev = ["pytest"]\n[tool.ruff]\nline-length = 100\n', 'uv.lock': '',
+  });
   const d = await detect(uv);
   assert.equal(d.verify, 'uv run pytest');
   assert.equal(d.format, 'ruff format {file}');
+});
+
+test('detect: python without pytest uses the standard library unittest', async () => {
+  const dir = tempProject({ 'pyproject.toml': '[project]\nname = "notas"\n' });
+  assert.equal((await detect(dir)).verify, 'python -m unittest');
+  const uv = tempProject({ 'pyproject.toml': '[project]\nname = "notas"\n', 'uv.lock': '' });
+  assert.equal((await detect(uv)).verify, 'uv run python -m unittest');
 });
 
 test('detect: rust and go', async () => {
